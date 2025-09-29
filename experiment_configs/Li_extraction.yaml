@@ -1,0 +1,106 @@
+# Lithium extraction literature review experiment (literature-only)
+copilot-mode: True
+
+# Research topic
+research-topic: "Lithium extraction processes: systematic literature review, structured metric extraction, comparison and weighted ranking of methods for industrial deployment."
+
+# API key - recommendation: prefer setting OPENAI_API_KEY as an environment variable
+# If you must store here for testing, replace the placeholder, but avoid committing secrets to source control.
+api-key: "*"
+
+# Backends
+llm-backend: "qwen-plus"
+lit-review-backend: "qwen-plus"
+
+# Base language for intermediate agent prompts (final report must be English)
+language: "English"
+
+# High-level controls
+skip-experiments: True         # important: do NOT run or generate experimental code or attempt to execute experiments
+num-papers-lit-review: 10    # target number of papers to retrieve/consider (system will prioritize recent/high-IF sources)
+agentrxiv-papers: 0
+
+parallel-labs: False
+
+# Solver steps (kept small because this is literature-only)
+mlesolver-max-steps: 0
+papersolver-max-steps: 3
+lab-index: 1
+load-existing: False
+except-if-fail: False
+compile-latex: False
+
+# Scoring weights (matches requirements doc: recovery 40%, energy 25%, cost 20%, environment 15%)
+scoring_weights:
+  recovery_rate: 0.40
+  energy_consumption: 0.25
+  cost: 0.20
+  environmental_impact: 0.15
+
+# Literature filters: prefer recent (last 10-15 years), journals with IF>2 (except Nature which is always allowed), min citations optional
+literature_filters:
+  years_back: 15
+  prefer_years: 10          # prioritize last 10 years when ranking relevance
+  min_journal_if: 2.0
+  include_journals: []      # explicit journal allow-list (empty = use IF filter)
+  exclude_sources: []       # explicit exclusion list
+  min_citation_count: 3
+
+# Desired extraction fields - what agents must extract from each paper (keys for structured output)
+extraction_fields:
+  - process_name
+  - recovery_rate           # numeric or range (%), require source citation
+  - energy_consumption      # kWh per tonne Li or kWh per kg Li, normalize later; require units and source
+  - capex_range             # estimated CAPEX (USD) or range, indicate assumptions
+  - opex_range              # estimated OPEX (USD/yr or per tonne), indicate assumptions
+  - typical_purity          # typical Li product purity
+  - water_use               # liters / tonne Li or comparable unit
+  - brine_depletion         # qualitative/quantitative indicator; cite source
+  - tailings_issues         # qualitative description and any quantitative metrics
+  - experimental_conditions # e.g., temperature, reagents, concentrations if provided
+  - geographical_context    # where the study was performed (brine vs hard rock)
+  - citation                # string citation (title, authors, year, DOI/URL)
+
+# Task notes for agents: guides and constraints
+task-notes:
+  literature-review:
+    - "Search keywords: \"lithium extraction processes\", \"direct lithium extraction\", \"spodumene processing\", \"adsorption lithium\", \"solvent extraction lithium\", \"ion exchange lithium\", \"membrane lithium extraction\", \"electrochemical lithium extraction\"."
+    - "Prioritize review articles and surveys, and primary experimental/techno-economic studies published within the last 10 years. Expand to last 15 years where necessary for background or missing metrics."
+    - "For each paper, extract the fields specified in `extraction_fields`. For any quantitative metric, include the exact value, units, and the sentence/paragraph from which it was extracted (as supporting evidence)."
+    - "If a paper provides a range (e.g., recovery 70-90%), record the range and the reported central tendency if provided (mean/median). Always attach a citation to each metric."
+    - "If units differ across papers (e.g., kWh/ton vs kWh/kg), normalize to kWh/ton Li and document the conversion formula and assumptions."
+    - "When CAPEX/OPEX are reported in different currencies/years, normalize to USD 2024 using provided conversion notes and state assumptions; if conversion is not possible, report original numbers and label as non-normalized."
+    - "Do NOT invent numbers. If a paper does not report a metric, mark it as 'not reported' rather than hallucinating."
+    - "Produce a consolidated comparison table (CSV/TSV preferred) that includes process_name and all extraction_fields for each method/paper, and an aggregated per-method summary (merge multiple papers about the same method)."
+
+  plan-formulation:
+    - "Create a plan that: (1) retrieves candidate papers using the literature filters, (2) extracts structured metrics into a table, (3) aggregates by process name, and (4) computes weighted scores per method using `scoring_weights`."
+
+  running-experiments:
+    - "This experiment is literature-only. Do NOT generate runnable experiment code, do not write `run_experiments.py` or attempt to execute code."
+
+  report-writing:
+    - "Generate a final report in English that includes: abstract, methods, structured comparison table, per-method summaries, scoring calculations with formulas and referenced values, top-3 ranked methods with justifications, and a complete reference list (titles, authors, year, DOI/URL)."
+
+# Output / acceptance criteria
+outputs:
+  final_report_language: "English"
+  structured_table_format: "csv"   # preferred output for the comparison table
+  deliverables:
+    - "comparison_table.csv (or .tsv) with rows for methods and extracted fields"
+    - "final_report.txt or final_report.pdf (English)"
+    - "references.bib or references.txt with all source citations"
+
+# Acceptance criteria (from requirements doc)
+acceptance_criteria:
+  - "At least 1000 relevant documents successfully retrieved and considered by the pipeline (or a best-effort report with explanation if unavailable)."
+  - "Comparison table includes all extraction fields listed in `extraction_fields` (fields marked as 'not reported' are acceptable but must be labeled)."
+  - "Scoring calculation steps are shown for each ranked method and ranking respects the provided `scoring_weights`."
+  - "Final report lists the top 3 recommended methods and shows supporting references for each data point used in scoring."
+  - "Prioritize literature within the last 10 years and journals with IF > 2 (Nature and its sub-journals allowed regardless of IF)."
+
+# Notes and metadata
+notes:
+  - "This YAML config enforces literature-only operation; set `skip-experiments: False` if you later want to run experiments."
+  - "Set the environment variable OPENAI_API_KEY before running to avoid embedding secrets in config files."
+

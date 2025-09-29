@@ -54,6 +54,10 @@ class LaboratoryWorkflow:
         self.review_total_steps = 0 # num steps to take if overridden
         self.arxiv_num_summaries = 5
         self.num_agentrxiv_papers = agentrxiv_papers
+        # new controls
+        self.skip_experiments = False
+        self.scoring_weights = None
+        self.literature_filters = None
         self.mlesolver_max_steps = mlesolver_max_steps
         self.papersolver_max_steps = papersolver_max_steps
 
@@ -162,12 +166,21 @@ class LaboratoryWorkflow:
                     while repeat: repeat = self.plan_formulation()
                     self.phase_status[subtask] = True
                 if (subtask not in self.phase_status or not self.phase_status[subtask]) and subtask == "data preparation":
-                    repeat = True
-                    while repeat: repeat = self.data_preparation()
+                    # allow skipping experimental phases when requested
+                    if getattr(self, 'skip_experiments', False):
+                        print(f"Skipping subtask: {subtask} due to skip_experiments setting")
+                        self.phase_status[subtask] = True
+                    else:
+                        repeat = True
+                        while repeat: repeat = self.data_preparation()
                     self.phase_status[subtask] = True
                 if (subtask not in self.phase_status or not self.phase_status[subtask]) and subtask == "running experiments":
-                    repeat = True
-                    while repeat: repeat = self.running_experiments()
+                    if getattr(self, 'skip_experiments', False):
+                        print(f"Skipping subtask: {subtask} due to skip_experiments setting")
+                        self.phase_status[subtask] = True
+                    else:
+                        repeat = True
+                        while repeat: repeat = self.running_experiments()
                     self.phase_status[subtask] = True
                 if (subtask not in self.phase_status or not self.phase_status[subtask]) and subtask == "results interpretation":
                     repeat = True
@@ -708,6 +721,15 @@ def parse_yaml(yaml_file_loc):
 
     if 'lab-index' in agentlab_data: parser.lab_index = agentlab_data["lab-index"]
     else: parser.lab_index = 0
+    # new config options
+    if 'skip-experiments' in agentlab_data: parser.skip_experiments = agentlab_data["skip-experiments"]
+    else: parser.skip_experiments = False
+
+    if 'scoring-weights' in agentlab_data: parser.scoring_weights = agentlab_data["scoring-weights"]
+    else: parser.scoring_weights = None
+
+    if 'literature-filters' in agentlab_data: parser.literature_filters = agentlab_data["literature-filters"]
+    else: parser.literature_filters = None
     return parser
 
 
